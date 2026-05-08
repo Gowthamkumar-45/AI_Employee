@@ -172,6 +172,22 @@ def create_or_update(lead: dict) -> tuple[str, str]:
     r = requests.post(f"{BASE_URL}/contacts", headers=HEADERS, json=payload, timeout=15)
     if r.status_code in (200, 201):
         return "created", str(r.json().get("contact", {}).get("id", ""))
+
+    # Duplicate-mobile / not-unique: search index hasn't caught up yet.
+    # Wait briefly, re-lookup, then PUT.
+    if r.status_code == 400 and "not unique" in r.text.lower():
+        import time
+        time.sleep(2)
+        existing = find_contact_by_email(lead["email"])
+        if existing:
+            cid = existing["id"]
+            existing_tags = [t["name"] for t in existing.get("tags", []) if isinstance(t, dict)]
+            payload = _build_payload(lead, existing_tags)
+            r2 = requests.put(f"{BASE_URL}/contacts/{cid}", headers=HEADERS, json=payload, timeout=15)
+            if r2.status_code in (200, 201):
+                return "updated", str(cid)
+            return "failed", f"PUT-retry {r2.status_code}: {r2.text[:120]}"
+        return "failed", "duplicate but lookup empty"
     return "failed", f"POST {r.status_code}: {r.text[:150]}"
 
 

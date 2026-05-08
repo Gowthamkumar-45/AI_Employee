@@ -187,6 +187,27 @@ def get_events(email: str) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def sync_to_freshworks(email: str) -> str:
+    """Push a lead's current DB state to Freshworks CRM.
+    Returns a status string. Failures are non-fatal."""
+    if not email:
+        return "skipped (no email)"
+    try:
+        # lazy import to avoid circular dep and missing-deps crashes
+        from freshworks_sync import create_or_update, load_leads  # type: ignore
+    except Exception as exc:
+        return f"freshworks module unavailable ({exc})"
+
+    matched = [l for l in load_leads() if l["email"] == email]
+    if not matched:
+        return "not in DB"
+    try:
+        result, detail = create_or_update(matched[0])
+        return f"{result} ({detail})" if result == "failed" else result
+    except Exception as exc:
+        return f"error: {exc}"
+
+
 def stats() -> dict:
     """Return per-stage counts + total."""
     with get_conn() as conn:
@@ -250,13 +271,17 @@ def main():
     p_show = sub.add_parser("show", help="Show one lead + events")
     p_show.add_argument("email")
 
-    p_add = sub.add_parser("add", help="Add a lead")
+    p_add = sub.add_parser("add", help="Add a lead (auto-syncs to Freshworks if email present)")
     for f in LEAD_FIELDS:
         p_add.add_argument(f"--{f.replace('_', '-')}")
+    p_add.add_argument("--no-sync", action="store_true",
+                       help="skip Freshworks sync (DB only)")
 
-    p_update = sub.add_parser("update", help="Update lead by email")
+    p_update = sub.add_parser("update", help="Update lead by email (auto-syncs to Freshworks)")
     p_update.add_argument("email")
     p_update.add_argument("kv", nargs="+", help="key=value pairs")
+    p_update.add_argument("--no-sync", action="store_true",
+                          help="skip Freshworks sync (DB only)")
 
     p_event = sub.add_parser("event", help="Log an event for a lead")
     p_event.add_argument("email")
@@ -309,9 +334,12 @@ def main():
             sys.exit(1)
         lead_id = add_lead(**kwargs)
         if lead_id:
-            print(f"created lead id={lead_id}")
+            print(f"db: created lead id={lead_id}")
+            if not args.no_sync and kwargs.get("email"):
+                fw_status = sync_to_freshworks(kwargs["email"])
+                print(f"freshworks: {fw_status}")
         else:
-            print(f"email already exists: {kwargs.get('email')}")
+            print(f"db: email already exists: {kwargs.get('email')}")
 
     elif args.cmd == "update":
         kwargs = {}
@@ -322,11 +350,12 @@ def main():
             k, v = kv.split("=", 1)
             kwargs[k] = v
         if update_lead(args.email, **kwargs):
-            db_lead = get_lead_by_email(args.email)
-            print(f"updated {args.email} → {kwargs}")
+            print(f"db: updated {args.email} → {kwargs}")
             if "stage" in kwargs:
-                add_event(args.email, "stage_change",
-                          f"→ {kwargs['stage']}")
+                add_event(args.email, "stage_change", f"→ {kwargs['stage']}")
+            if not args.no_sync:
+                fw_status = sync_to_freshworks(args.email)
+                print(f"freshworks: {fw_status}")
         else:
             print(f"no lead found or no fields updated: {args.email}")
 
