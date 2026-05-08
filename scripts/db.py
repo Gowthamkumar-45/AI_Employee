@@ -187,6 +187,40 @@ def get_events(email: str) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def publish_routine_leads() -> str:
+    """Regenerate data/routine_leads.json and push to GitHub if it changed.
+    The remote sales-pipeline-monitor routine fetches this file. Without
+    publishing, new outreach-stage leads won't be monitored."""
+    import subprocess
+    repo_root = Path(__file__).parent.parent
+    out_path = repo_root / "data" / "routine_leads.json"
+    export_routine_leads(out_path)
+
+    rel = out_path.relative_to(repo_root)
+    status = subprocess.run(
+        ["git", "status", "--porcelain", str(rel)],
+        cwd=str(repo_root), capture_output=True, text=True,
+    )
+    if not status.stdout.strip():
+        return "no change"
+
+    add = subprocess.run(["git", "add", str(rel)], cwd=str(repo_root),
+                         capture_output=True, text=True)
+    if add.returncode != 0:
+        return f"git add failed: {add.stderr.strip()[:120]}"
+    commit = subprocess.run(
+        ["git", "commit", "-m", "auto-publish routine_leads.json"],
+        cwd=str(repo_root), capture_output=True, text=True,
+    )
+    if commit.returncode != 0:
+        return f"git commit failed: {commit.stderr.strip()[:120]}"
+    push = subprocess.run(["git", "push"], cwd=str(repo_root),
+                          capture_output=True, text=True)
+    if push.returncode != 0:
+        return f"git push failed: {push.stderr.strip()[:120]}"
+    return "pushed"
+
+
 def sync_to_freshworks(email: str) -> str:
     """Push a lead's current DB state to Freshworks CRM.
     Returns a status string. Failures are non-fatal."""
@@ -298,12 +332,16 @@ def main():
         p_add.add_argument(f"--{f.replace('_', '-')}")
     p_add.add_argument("--no-sync", action="store_true",
                        help="skip Freshworks sync (DB only)")
+    p_add.add_argument("--no-publish", action="store_true",
+                       help="skip routine_leads.json git push")
 
     p_update = sub.add_parser("update", help="Update lead by email (auto-syncs to Freshworks)")
     p_update.add_argument("email")
     p_update.add_argument("kv", nargs="+", help="key=value pairs")
     p_update.add_argument("--no-sync", action="store_true",
                           help="skip Freshworks sync (DB only)")
+    p_update.add_argument("--no-publish", action="store_true",
+                          help="skip routine_leads.json git push")
 
     p_event = sub.add_parser("event", help="Log an event for a lead")
     p_event.add_argument("email")
@@ -365,6 +403,9 @@ def main():
             if not args.no_sync and kwargs.get("email"):
                 fw_status = sync_to_freshworks(kwargs["email"])
                 print(f"freshworks: {fw_status}")
+            if not args.no_publish and kwargs.get("stage") == "outreach":
+                pub_status = publish_routine_leads()
+                print(f"routine: {pub_status}")
         else:
             print(f"db: email already exists: {kwargs.get('email')}")
 
@@ -383,6 +424,10 @@ def main():
             if not args.no_sync:
                 fw_status = sync_to_freshworks(args.email)
                 print(f"freshworks: {fw_status}")
+            # publish if stage changed (lead may now appear in or leave the outreach list)
+            if not args.no_publish and "stage" in kwargs:
+                pub_status = publish_routine_leads()
+                print(f"routine: {pub_status}")
         else:
             print(f"no lead found or no fields updated: {args.email}")
 
