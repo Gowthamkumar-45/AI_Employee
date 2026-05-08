@@ -1,0 +1,28 @@
+# secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor / temp
+*.swp
+*.tmp
+CLAUDE.tmp
+CLAUDE.test
+
+# claude code local-only settings (machine-specific)
+.claude/settings.local.json
+
+# data
+data/*.db
+data/*.sqlite
