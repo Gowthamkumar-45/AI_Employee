@@ -43,7 +43,7 @@ as the lead moves through stages.
 - `db.py add` and `db.py update` AUTO-SYNC to Freshworks CRM by default — leads always end up in both stores. Pass `--no-sync` only for bulk operations or offline use
 - use `db.py list`, `db.py show <email>`, `db.py update <email> stage=...`, `db.py event <email> <type> <detail>` for everything
 - when adding a new lead, use `db.py add --name "..." --email "..." [--company ...] [--source ...] [--campaign ...] [--stage scouted]`
-- after a batch of new leads moves to `outreach` stage (drafts created, awaiting send), run `python3 scripts/db.py export-routine && git add data/routine_leads.json && git commit -m "update routine lead list" && git push` so the remote sales-pipeline-monitor routine sees the new leads on its next run
+- `db.py add` and `db.py update` automatically publish `data/routine_leads.json` to GitHub when an outreach-stage lead is added or stage changes — the remote sales-pipeline-monitor routine picks it up on its next run. Pass `--no-publish` to opt out
 - use memory/qualification.md to check if a lead fits before outreach
 - use memory/objections.md to handle pushback
 - when you give leads, include phone number, email, linkedin profile, and other social media profiles if available
