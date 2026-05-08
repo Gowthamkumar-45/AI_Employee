@@ -71,6 +71,7 @@ see the `skills/` folder. each file is a playbook for a specific task.
 - [`send-thank-you.md`](skills/send-thank-you.md) - follow up after meetings with a personalised note
 - [`close-notification.md`](skills/close-notification.md) - notify admin after a deal closes
 - [`track-replies.md`](skills/track-replies.md) - check Gmail and Calendly for new events, update pipeline.md and Freshworks
+- [`same-day-booking.md`](skills/same-day-booking.md) - when a lead asks to meet TODAY, fetch live Calendly slots for the next 12h and propose specific times
 
 ## Tone
 casual, lowercase, direct. no corporate speak. no emojis. no dashes as thought separators. sound like a real person.
