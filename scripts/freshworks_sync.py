@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Freshworks CRM sync — pushes leads from memory/pipeline.md into Freshworks
+"""Freshworks CRM sync — pushes leads from data/leads.db into Freshworks
 and supports targeted stage updates after events (email sent, reply, booking).
 
 Usage:
-    python3 scripts/freshworks_sync.py                      # full sync from pipeline.md
+    python3 scripts/freshworks_sync.py                      # full sync from leads.db
     python3 scripts/freshworks_sync.py --test               # test connection
     python3 scripts/freshworks_sync.py --dry-run            # preview, no API calls
     python3 scripts/freshworks_sync.py --update <email> <stage>
@@ -18,12 +18,14 @@ Usage:
 
 import hashlib
 import os
-import re
 import sys
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).parent))
+import db  # noqa: E402
 
 load_dotenv()
 
@@ -56,69 +58,41 @@ STAGE_TAGS = {
 
 
 # ---------------------------------------------------------------------------
-# pipeline.md parser
+# Lead loader (reads from data/leads.db)
 # ---------------------------------------------------------------------------
 
-def _field(block: str, label: str) -> str:
-    pattern = rf"\*\*{re.escape(label)}:\*\*\s*(.+)"
-    m = re.search(pattern, block)
-    return m.group(1).strip() if m else ""
-
-
-def _extract_email(raw: str) -> str:
-    m = re.search(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", raw)
-    return m.group(0) if m else ""
-
-
-def _extract_phone(raw: str) -> str:
-    if "..." in raw or "to be" in raw.lower() or "available" in raw.lower():
-        return ""
-    m = re.search(r"[\+\d][\d\s\-\(\)]{6,}", raw)
-    return m.group(0).strip() if m else ""
-
-
-def _extract_linkedin(raw: str) -> str:
-    m = re.search(r"https?://[^\s)]+linkedin[^\s)]+", raw)
-    return m.group(0) if m else ""
-
-
 def _placeholder_phone(seed: str) -> str:
-    h = hashlib.md5(seed.encode()).hexdigest()
+    """Deterministic placeholder for leads without a real phone."""
+    import re
+    h = hashlib.md5((seed or "lead").encode()).hexdigest()
     digits = re.sub(r"\D", "", h)[:10].ljust(10, "0")
     return f"+1{digits}"
 
 
-def parse_pipeline(path: Path) -> list[dict]:
-    text = path.read_text(encoding="utf-8")
-    blocks = re.split(r"#{3}\s+Lead\s+\d+", text)
+def load_leads() -> list[dict]:
+    """Read all leads from the SQLite DB and shape them for the sync flow."""
+    rows = db.list_leads()
     leads = []
-    for block in blocks[1:]:
-        name = _field(block, "Lead name")
-        if "***" in name:
-            name = re.sub(r"\*+", "", name).strip()
-        if not name:
-            continue
-
-        email = _extract_email(_field(block, "Contact email"))
-        phone = _extract_phone(_field(block, "Phone number"))
-
+    for r in rows:
+        phone = r.get("phone") or ""
+        is_placeholder = False
+        if not phone:
+            phone = _placeholder_phone(r.get("email") or r["name"])
+            is_placeholder = True
         leads.append({
-            "name": name,
-            "company": _field(block, "Company"),
-            "role": _field(block, "Role"),
-            "email": email,
+            "name": r["name"],
+            "company": r.get("company") or "",
+            "role": r.get("role") or "",
+            "email": r.get("email") or "",
             "phone": phone,
-            "phone_is_placeholder": False,
-            "linkedin": _extract_linkedin(_field(block, "LinkedIn profile")),
-            "stage_raw": _field(block, "Current stage").lower(),
-            "next_step": _field(block, "Next step"),
-            "notes": _field(block, "Notes"),
-            "source": _field(block, "Source"),
-            "verification": _field(block, "Verification status"),
+            "phone_is_placeholder": is_placeholder,
+            "linkedin": r.get("linkedin") or "",
+            "stage_raw": (r.get("stage") or "scouted").lower(),
+            "next_step": r.get("next_step") or "",
+            "notes": r.get("notes") or "",
+            "source": r.get("source") or "",
+            "verification": r.get("verification_status") or "",
         })
-        if not leads[-1]["phone"]:
-            leads[-1]["phone"] = _placeholder_phone(email or name)
-            leads[-1]["phone_is_placeholder"] = True
     return leads
 
 
@@ -301,12 +275,8 @@ if __name__ == "__main__":
         update_stage(args[i + 1], args[i + 2])
         sys.exit(0)
 
-    pipeline_path = Path(__file__).parent.parent / "memory" / "pipeline.md"
-    if not pipeline_path.exists():
-        raise SystemExit(f"pipeline.md not found at {pipeline_path}")
-
-    print(f"reading {pipeline_path}")
-    leads = parse_pipeline(pipeline_path)
+    print(f"reading {db.DB_PATH}")
+    leads = load_leads()
     print(f"found {len(leads)} leads\n")
 
     if "--dry-run" in args:
