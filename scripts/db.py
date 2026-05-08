@@ -255,6 +255,28 @@ def export_markdown(out_path: str | Path) -> Path:
     return out
 
 
+def export_routine_leads(out_path: str | Path) -> Path:
+    """Write outreach-stage leads as JSON for the remote routine to fetch
+    via raw.githubusercontent.com. Includes only leads with a real email."""
+    import json
+    rows = list_leads(stage="outreach")
+    payload = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "leads": [
+            {
+                "name": r["name"],
+                "email": r["email"],
+                "company": r.get("company") or "",
+            }
+            for r in rows if r.get("email")
+        ],
+    }
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return out
+
+
 # ---- CLI -------------------------------------------------------------------
 
 def main():
@@ -292,6 +314,11 @@ def main():
     p_export = sub.add_parser("export", help="Write markdown view from DB")
     p_export.add_argument("--out",
                           default=str(Path(__file__).parent.parent / "memory" / "pipeline.md"))
+
+    p_export_routine = sub.add_parser("export-routine",
+                                       help="Write JSON of outreach-stage leads for the remote routine to fetch")
+    p_export_routine.add_argument("--out",
+                                   default=str(Path(__file__).parent.parent / "data" / "routine_leads.json"))
 
     sub.add_parser("stats", help="Print stage summary")
 
@@ -369,6 +396,13 @@ def main():
     elif args.cmd == "export":
         out = export_markdown(args.out)
         print(f"exported to {out}")
+
+    elif args.cmd == "export-routine":
+        out = export_routine_leads(args.out)
+        rows = list_leads(stage="outreach")
+        n = len([r for r in rows if r.get("email")])
+        print(f"exported {n} outreach-stage leads with email to {out}")
+        print("next: git add data/routine_leads.json && git commit -m 'update routine lead list' && git push")
 
     elif args.cmd == "stats":
         s = stats()
