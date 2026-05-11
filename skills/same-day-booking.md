@@ -17,9 +17,9 @@ Then run this skill instead of the regular reply flow.
 
 ## Step 1: Resolve the host event type
 
-- default event: **Startup Discovery Call** (30 min)
-  - URI: `https://api.calendly.com/event_types/8eef4752-0689-47ce-b4ea-db3053960fa1`
-  - public URL: `https://calendly.com/mm-kumarrr123/startup-discovery-call`
+- default event: **30 Minute Meeting** (30 min)
+  - URI: `https://api.calendly.com/event_types/a68cf218-9c4b-448e-85f7-90d38486b444`
+  - public URL: `https://calendly.com/gowtham-startupculture/30min`
 
 ## Step 2: Fetch today's available slots
 
@@ -27,7 +27,7 @@ Call `mcp__claude_ai_Calendly__event_types-list_event_type_available_times`:
 
 ```json
 {
-  "event_type": "https://api.calendly.com/event_types/8eef4752-0689-47ce-b4ea-db3053960fa1",
+  "event_type": "https://api.calendly.com/event_types/a68cf218-9c4b-448e-85f7-90d38486b444",
   "start_time": "<now in ISO 8601 UTC>",
   "end_time": "<now + 12 hours in ISO 8601 UTC>"
 }
@@ -60,7 +60,7 @@ happy to chat today. here are the slots i have open:
 reply with whichever works and i'll send a calendar invite. or grab any
 slot directly:
 
-https://calendly.com/mm-kumarrr123/startup-discovery-call
+https://calendly.com/gowtham-startupculture/30min
 
 gowtham
 team@startupculture.co.in
@@ -88,7 +88,7 @@ hey <first_name>,
 today's filling up — i don't have a slot open till tomorrow morning. here's
 my calendar — pick whatever works:
 
-https://calendly.com/mm-kumarrr123/startup-discovery-call
+https://calendly.com/gowtham-startupculture/30min
 
 happy to make tomorrow morning work if you're free.
 

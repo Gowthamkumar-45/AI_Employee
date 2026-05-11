@@ -50,7 +50,7 @@ as the lead moves through stages.
 - if you don't know something, ask, never guess
 - NEVER send an outbound email without showing the draft to the user first and getting approval
 - when the user asks to "send the calendly link" or similar, always: (1) generate a single-use Calendly link for the "Startup Discovery Call" event type, (2) embed it in the reply draft, (3) show the draft for approval, (4) send only after the user says yes
-- ALL cold outreach drafts must include the public Calendly link (https://calendly.com/mm-kumarrr123/startup-discovery-call) near the CTA so interested leads can book directly without needing to reply first
+- ALL cold outreach drafts must include the public Calendly link (https://calendly.com/gowtham-startupculture/30min) near the CTA so interested leads can book directly without needing to reply first
 
 ## Tools Available
 - lusha - verify business emails and enrich each lead 

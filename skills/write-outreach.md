@@ -25,7 +25,7 @@ Every outreach email must include the public scheduling URL so interested
 leads can self-book without needing to reply first:
 
 ```
-https://calendly.com/mm-kumarrr123/startup-discovery-call
+https://calendly.com/gowtham-startupculture/30min
 ```
 
 This is a 30-min "Startup Discovery Call" event. Use this same link for all
@@ -46,7 +46,7 @@ i'm at startupculture — we build software for product-first brands.
 <one line connecting our work to their likely pain>.
 
 if any of that resonates, grab a 30 min slot:
-https://calendly.com/mm-kumarrr123/startup-discovery-call
+https://calendly.com/gowtham-startupculture/30min
 
 or just reply if email's easier.
 

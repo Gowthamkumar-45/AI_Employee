@@ -6,9 +6,9 @@ draft and show the user before sending.
 
 ## Step 1: Generate a Calendly scheduling link
 
-- default event type: **Startup Discovery Call** (30 min)
-  - URI: `https://api.calendly.com/event_types/8eef4752-0689-47ce-b4ea-db3053960fa1`
-  - public URL: `https://calendly.com/mm-kumarrr123/startup-discovery-call`
+- default event type: **30 Minute Meeting** (30 min)
+  - URI: `https://api.calendly.com/event_types/a68cf218-9c4b-448e-85f7-90d38486b444`
+  - public URL: `https://calendly.com/gowtham-startupculture/30min`
 - if the user names a different event type, call `event_types-list_event_types`
   to find it
 - create a single-use link via
