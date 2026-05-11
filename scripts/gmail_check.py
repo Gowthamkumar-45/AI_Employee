@@ -308,10 +308,9 @@ def check_calendly():
             continue
 
         for inv in invitees:
-            inv_email = inv.get("email", "").lower()
-            if inv_email not in lead_by_email:
-                continue
-            lead = lead_by_email[inv_email]
+            inv_email = (inv.get("email") or "").lower()
+            inv_name = (inv.get("name") or "").strip() or inv_email or "unknown invitee"
+            lead = lead_by_email.get(inv_email)  # may be None for unknown invitees
 
             start_time = datetime.fromisoformat(ev["start_time"].replace("Z", "+00:00"))
             join_url = ""
@@ -319,17 +318,20 @@ def check_calendly():
             if isinstance(loc, dict):
                 join_url = loc.get("join_url") or ""
 
-            # NEW BOOKING detection: first time we've seen this event URI
+            # NEW BOOKING detection — notify for EVERY new booking, even
+            # if invitee isn't yet in our lead DB.
             if ev_uri not in bookings_seen:
                 new_bookings.append({
-                    "lead": lead,
+                    "lead": lead,             # may be None
+                    "inv_name": inv_name,
+                    "inv_email": inv_email,
                     "start_time": start_time,
                     "join_url": join_url,
                     "ev_uri": ev_uri,
                 })
                 bookings_seen[ev_uri] = now_utc.isoformat()
-                # Update DB stage
-                if lead.get("stage") not in ("booked", "met", "won", "lost"):
+                # If lead is in DB, update stage. Otherwise leave it alone.
+                if lead and lead.get("stage") not in ("booked", "met", "won", "lost"):
                     db.update_lead(inv_email, stage="booked",
                                    next_step=f"prep for call at {start_time.astimezone().strftime('%Y-%m-%d %H:%M')}")
                     db.add_event(inv_email, "booking",
@@ -341,6 +343,8 @@ def check_calendly():
                 if ev_uri not in reminders_sent:
                     upcoming_reminders.append({
                         "lead": lead,
+                        "inv_name": inv_name,
+                        "inv_email": inv_email,
                         "start_time": start_time,
                         "join_url": join_url,
                         "minutes_until": int(time_until / 60),
@@ -348,23 +352,32 @@ def check_calendly():
                     reminders_sent[ev_uri] = now_utc.isoformat()
 
     # Slack notifications
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
     for b in new_bookings:
-        lead = b["lead"]
-        ist = b["start_time"].astimezone(timezone(timedelta(hours=5, minutes=30)))
+        ist = b["start_time"].astimezone(ist_tz)
+        if b["lead"]:
+            who = f"{b['lead']['name']} ({b['lead'].get('company') or 'unknown'})"
+            footer = "next: prep talking points"
+        else:
+            who = f"{b['inv_name']} <{b['inv_email']}>"
+            footer = "next: not in DB yet — add via `db.py add` if you want to track"
         send_slack(
             f"*new booking ✓*\n"
-            f"{lead['name']} ({lead.get('company') or 'unknown'}) booked a call\n"
+            f"{who} booked a call\n"
             f"when: {ist.strftime('%a %d %b %Y at %H:%M IST')}\n"
             f"link: {b['join_url']}\n"
-            f"next: prep talking points"
+            f"{footer}"
         )
 
     for r in upcoming_reminders:
-        lead = r["lead"]
-        ist = r["start_time"].astimezone(timezone(timedelta(hours=5, minutes=30)))
+        ist = r["start_time"].astimezone(ist_tz)
+        if r["lead"]:
+            who = f"{r['lead']['name']} ({r['lead'].get('company') or 'unknown'})"
+        else:
+            who = f"{r['inv_name']} <{r['inv_email']}>"
         send_slack(
             f"*heads up — meeting in {r['minutes_until']} min*\n"
-            f"{lead['name']} ({lead.get('company') or 'unknown'})\n"
+            f"{who}\n"
             f"when: {ist.strftime('%H:%M IST')}\n"
             f"join: {r['join_url']}"
         )
