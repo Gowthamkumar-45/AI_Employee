@@ -403,9 +403,8 @@ def main():
             if not args.no_sync and kwargs.get("email"):
                 fw_status = sync_to_freshworks(kwargs["email"])
                 print(f"freshworks: {fw_status}")
-            if not args.no_publish and kwargs.get("stage") == "outreach":
-                pub_status = publish_routine_leads()
-                print(f"routine: {pub_status}")
+            # GitHub publish disabled per user request — leads stay local.
+            # Local watcher (gmail_check.py) reads data/leads.db directly.
         else:
             print(f"db: email already exists: {kwargs.get('email')}")
 
@@ -424,10 +423,7 @@ def main():
             if not args.no_sync:
                 fw_status = sync_to_freshworks(args.email)
                 print(f"freshworks: {fw_status}")
-            # publish if stage changed (lead may now appear in or leave the outreach list)
-            if not args.no_publish and "stage" in kwargs:
-                pub_status = publish_routine_leads()
-                print(f"routine: {pub_status}")
+            # GitHub publish disabled per user request — leads stay local.
         else:
             print(f"no lead found or no fields updated: {args.email}")
 
