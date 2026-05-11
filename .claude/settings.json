@@ -35,22 +35,12 @@
       "mcp__claude_ai_Fireflies__fireflies_search",
       "Bash(python3 scripts/db.py *)",
       "Bash(python3 scripts/freshworks_sync.py *)",
-      "Bash(python3 scripts/migrate_pipeline.py)"
+      "Bash(python3 scripts/migrate_pipeline.py)",
+      "Bash(python3 scripts/send_mail.py *)",
+      "Bash(python3 scripts/gmail_check.py)",
+      "Write(/tmp/**)",
+      "Write(/var/folders/**)"
     ]
   },
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/scripts/notify_slack.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ]
-  }
+  "hooks": {}
 }

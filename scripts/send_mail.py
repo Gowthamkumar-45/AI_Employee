@@ -72,7 +72,12 @@ def main():
     g.add_argument("--body-file", help="path to a file containing the body")
     args = p.parse_args()
 
-    body = args.body if args.body else Path(args.body_file).read_text(encoding="utf-8")
+    if args.body:
+        body = args.body
+    elif args.body_file == "-":
+        body = sys.stdin.read()
+    else:
+        body = Path(args.body_file).read_text(encoding="utf-8")
 
     print(f"sending to {args.to}...")
     status = send_via_smtp(args.to, args.subject, body)
