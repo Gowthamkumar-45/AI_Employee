@@ -362,8 +362,9 @@ def main():
 
     args = parser.parse_args()
 
+    init_db()
+
     if args.cmd == "init":
-        init_db()
         print(f"DB ready at {DB_PATH}")
 
     elif args.cmd == "list":
